@@ -1,0 +1,79 @@
+jenkins:
+  agentProtocols:
+    - "JNLP4-connect"
+    - "Ping"
+
+  nodes:
+    - permanent:
+        name: "static-agent"
+        remoteFS: "/var/jenkins_home"
+        labelString: "agent"
+        launcher: "inbound"
+        mode: EXCLUSIVE
+        retentionStrategy: "always"
+
+    - permanent:
+        name: "static-agent-with-tini"
+        remoteFS: "/var/jenkins_home"
+        labelString: "agent-with-tini"
+        launcher: "inbound"
+        mode: EXCLUSIVE
+        retentionStrategy: "always"
+
+
+  labelString: "master"
+
+  numExecutors: 5
+  mode: EXCLUSIVE
+  quietPeriod: 5
+  slaveAgentPort: 50000
+  scmCheckoutRetryCount: 0
+
+  markupFormatter:
+    rawHtml:
+      disableSyntaxHighlighting: false
+
+  crumbIssuer:
+    standard:
+      excludeClientIPFromCrumb: true
+
+unclassified:
+  location:
+    url: "http://localhost:8080/"
+
+jobs:
+  - script: >
+      pipelineJob('test job for normal agent') {
+        definition {
+          cps {
+            script("""\
+            #!/usr/bin/env groovy
+
+            node('agent') {
+              stage('sleep') {
+                sh 'sleep 30'
+              }
+            }""".stripIndent())
+            sandbox()
+          }
+        }
+      }
+
+  - script: >
+      pipelineJob('test job for agent with tini') {
+        definition {
+          cps {
+            script("""\
+            #!/usr/bin/env groovy
+
+            node('agent-with-tini') {
+              stage('sleep') {
+                sh 'sleep 30'
+              }
+            }""".stripIndent())
+            sandbox()
+          }
+        }
+      }
+      
+      

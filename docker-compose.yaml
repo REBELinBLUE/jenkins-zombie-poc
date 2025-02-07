@@ -1,0 +1,63 @@
+services:
+  controller:
+    build: docker/controller/
+    privileged: true
+    ports:
+      - 8080:8080
+      - 50000:50000
+    container_name: controller
+    user: root
+    environment:
+      JAVA_OPTS: "-Dcasc.jenkins.config=/var/jenkins_config -Djenkins.install.runSetupWizard=false"
+      JENKINS_URL: "localhost:8080"
+      COLLECT_DISK_USAGE: "false"
+      START_IN_DEV_MODE: "false"
+      STARTUP_ALERT_WEBHOOK: ""
+    volumes:
+      - controller-volume:/var/jenkins_home
+      - ./config:/var/jenkins_config
+
+  agent:
+    build: docker/agent/
+    container_name: agent
+    user: root
+    #init: true
+    depends_on:
+      - controller
+    environment:
+      JENKINS_URL: http://controller:8080
+      JENKINS_AGENT_NAME: static-agent
+      JENKINS_AGENT_WORKDIR: /var/jenkins_home
+      JENKINS_SECRET: "@/run/secrets/agent"
+    secrets:
+      - agent
+    volumes:
+      - agent-volume:/var/jenkins_home
+
+  agent-with-tini:
+    build: docker/agent/
+    container_name: agent2
+    user: root
+    depends_on:
+      - controller
+    environment:
+      JENKINS_URL: http://controller:8080
+      JENKINS_AGENT_NAME: static-agent-with-tini
+      JENKINS_AGENT_WORKDIR: /var/jenkins_home
+      JENKINS_SECRET: "@/run/secrets/agent2"
+    secrets:
+      - agent2
+    volumes:
+      - agent2-volume:/var/jenkins_home
+    entrypoint: ["/usr/local/bin/tini", "--", "jenkins-agent"]
+
+secrets:
+  agent:
+    file: secrets/static-agent.txt
+  agent2:
+    file: secrets/static-agent-with-tini.txt
+
+volumes:
+  controller-volume:
+  agent-volume:
+  agent2-volume:
